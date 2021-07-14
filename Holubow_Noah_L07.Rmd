@@ -1,0 +1,261 @@
+---
+title: "L07 Scales, Axes & Legends"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(warning = FALSE, message = FALSE, comment = FALSE)
+```
+
+## Overview
+
+The goal of this lab is to explore ways to manage and manipulate scales, axes, and legends within `ggplot2`. 
+
+## Datasets
+
+We'll be using the `tech_stocks.rda`, `corruption.rda`, `cdc.txt`, and a few toy datasets.
+
+<br>
+
+```{r load-packages-data-seed}
+# Load package(s)
+library(tidyverse)
+
+# Load datasets
+load("data/tech_stocks.rda")
+load("data/corruption.rda")
+
+# Read in the cdc dataset
+cdc <- read_delim(file = "data/cdc.txt", delim = "|") %>%
+  mutate(genhlth = factor(genhlth,
+    levels = c("excellent", "very good", "good", "fair", "poor")
+  ))
+
+# Set seed
+set.seed(975312468)
+
+# Selecting a random subset of size 100
+cdc_small <- cdc %>% slice_sample(n = 100)
+
+# Generating toy datasets for exercise 2
+dat1 <- tibble(theta = c(0, 2 * pi))
+
+dat2 <- tibble(
+  theta = seq(0, 2 * pi, length.out = 100),
+  obs = rnorm(100, sin(theta), 0.1),
+  larger_than = ifelse(abs(obs) < abs(sin(theta)), "1", "0")
+)
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+Using the `tech_stocks` dataset, recreate the following graphic as precisely as possible.
+
+*Hints:*
+
+- Size of lines in legend is 1.3
+- 0.75 and 0.85 will be useful
+- Eliminated extra space in horizontal direction
+- `key_glyph`
+
+**Answer:**
+```{r}
+# plot
+tech_stocks %>% 
+  mutate(company = factor(company, levels = c("Facebook", "Alphabet", "Microsoft", "Apple"))) %>% # changing company order
+  ggplot(aes(x = date, y = price_indexed)) + # basic plot
+  geom_line(aes(color = company), key_glyph = "timeseries") + # plotting trend lines
+  guides(color = guide_legend(override.aes = list(size = 1.3))) + # manually changing legend color
+  labs(
+    x = NULL,
+    y = NULL
+  ) + # labels
+  scale_x_date(expand = c(0,0)) + # setting x-axis scale
+  scale_y_continuous(
+    position = "right", 
+    breaks = scales::breaks_width(100), 
+    labels = scales::label_dollar()) +
+  theme_minimal() + # setting y-axis cale
+  theme(
+    legend.position = c(0.75, 0.85), 
+    legend.title = element_blank()
+    )
+```
+
+
+<br>
+
+### Exercise 2
+
+
+
+Using `corruption.rda` dataset, recreate the following graphic as precisely as possible.
+
+*Hints:*
+  
+- Transparency is 0.6
+- Only use 2015 data
+- Point size is 3 in legend
+- Color used is `grey40` & color palette `"Set1"`
+- `"y ~ log(x)"` (method `"lm"`)
+- Package `ggrepel`
+- `box.padding` is 0.6
+- Minimum segment length is 0
+- seed is 9876
+
+**Answer:**
+```{r}
+# countries
+countries <- c("Iraq", "Argentina", "China", "Ghana", "Niger", "Chile", "Japan", "United States", "Singapore")
+
+# label info
+labels <- corruption %>% 
+  filter(year == 2015,
+         country %in% countries)
+
+# plot
+corruption %>% 
+  filter(year == 2015) %>% # filtering out all years other than 2015
+  ggplot(aes(x = cpi, y = hdi)) + # basic plot
+  geom_point(aes(color = region), alpha = 0.6) + # plotting points
+  geom_smooth(
+    formula = "y ~ log(x)", 
+    method = "lm", 
+    color = "grey40", 
+    se = FALSE) + # plotting line with log function
+  labs(
+    x = "Corruption Perceptions Index, 2015 \n (100 = least corrupt)",
+    y = "Human Development Index, 2015 \n (1.0 = most developed)",
+    title = "Corruption and human development (2015)"
+  ) + # labels and title
+  guides(color = guide_legend(override.aes = list(size = 3))) +  # manually changing legend
+  ggrepel::geom_text_repel(
+    data = labels, 
+    aes(label = country), 
+    box.padding = 0.6, 
+    seed = 9876, 
+    min.segment.length = 0) + # plotting country labels
+  scale_color_brewer(palette = "Set1") + # manually setting color palette
+  theme_minimal() +
+  theme(
+    legend.position = c(1,0), 
+    legend.justification = c(1,0), 
+    legend.title = element_blank()) # moving legend to bottom right corner
+```
+
+
+<br>
+  
+### Exercise 3
+
+Use the toy datasets `dat1` and `dat2` to recreate the following graphic as precisely as possible.
+
+*Hints:*
+
+- Sizes used 2 (points) and 1.3 (line)
+- Transparency 0.8
+- Colors: `#56B4E9`, `darkgreen` (when `larger_than` is `1`), & `red` (when `larger_than` is `0`)
+
+**Answer:**
+```{r}
+# plot
+dat2 %>% 
+  ggplot(aes(x = theta, y = obs)) + # basic plot
+  geom_function(
+    fun = sin, 
+    color = "#56B4E9", 
+    size = 1.3) + # plotting sine function
+  geom_point(
+    aes(color = larger_than), 
+    size = 2, 
+    alpha = 0.8) + # plotting points
+  scale_color_manual(values = c("darkgreen", "red")) + # manually changing point colors
+  labs(
+    x =  "\u03B8",
+    y = "sin(\u03B8)"
+  ) + # labels
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+<br>
+
+### Exercise 4
+
+Using `cdc_small`construct a scatterplot of `weight` by `height` with the following requirements: 
+
+- Size of plotting characters should be 3.
+- Color and shape should both identify `genhlth`.
+- One legend for both color and shape.
+- Legend title should be "General Health?" with a newline starting after general.
+- Legend categories should be ordered from excellent (top) to poor (bottom) with each word in category capitalized in the legend.
+- Legend should be placed in the lower right-hand corner of the plotting area. 
+- Color should follow the `"Set1"` palette.
+- Shape should have a solid triangle (17) for excellent, solid circle (19) for very good, an `x` (4) for poor, an hollow rotated square with an `x` in it (9) for fair, and a solid square (15) for good.
+- `height` values should be limited between 55 and 80.
+- `height` axis should display every 5th number between 55 and 80 and be appropriately labeled (i.e. `55 in`, `60 in`, ..., `80 in`). No axis title is necessary.
+- `weight` values should be limited between 100 and 300. 
+- `weight` axis should be on log base 10 scale, but still display weights in pounds starting at 100 and displaying every 25 pounds until 300. Must be appropriately labeled (i.e. `100 lbs`, `125 lbs`, ..., `300 lbs`). No axis title is necessary.
+- Graph title should be `CDC BRFSS: Weight by Height`.
+- Minimal theme.
+
+**Answer:**
+```{r}
+# plot
+cdc_small %>% 
+  ggplot(aes(x = height, y = weight)) + # basic plot
+  geom_point(
+    aes(
+      color = genhlth, 
+      shape = genhlth), 
+    size = 3) + # plotting shapes with colors
+  scale_shape_manual(
+    labels = c("Excellent", "Very Good", "Good", "Fair", "Poor"), 
+    values = c(17, 19, 4, 9, 15)
+    ) + # manually changing shapes
+  scale_color_brewer(
+    labels = c("Excellent", "Very Good", "Good", "Fair", "Poor"), 
+    palette = "Set1"
+    ) + # manually changing colors
+  scale_x_continuous(
+    labels = scales::label_number(prefix = "", suffix = " in", accuracy = 1), 
+    breaks = scales::breaks_width(5), 
+    limits = c(55,80)
+    ) + # setting x-axis labels and intervals
+  scale_y_log10(
+    labels = scales::label_number(prefix = "", suffix = " lbs"), 
+    breaks = scales::breaks_width(25), 
+    limits = c(100,300)) + # setting y-axis labels and intervals
+  labs(
+    x = NULL, # no x-axis label
+    y = NULL, # no y-axis label
+    color =  "General \nHealth?", shape = "General \nHealth?", # legend label
+    title = "CDC BRFSS: Weight by Height" # title
+  )  +
+  theme_minimal() +
+  theme(
+    legend.position = c(1,0), 
+    legend.justification = c(1,0)
+    ) # moving legend to bottom right corner
+```
+
+
+
+<br>

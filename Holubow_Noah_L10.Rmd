@@ -1,0 +1,190 @@
+---
+title: "L10 Faceting"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+```{r global_options}
+library(knitr)
+opts_chunk$set(warning = FALSE, message = FALSE, comment = FALSE, dpi = 300)
+```
+
+## Overview
+
+The goal of this lab is to do a little practice with facets (small multiples) and provide and opportunity to try out using non-standard fonts.
+
+## Datasets
+
+We'll be using the `cdc.txt` dataset.
+
+<br>
+
+```{r load-packages-data-seed}
+# Load package(s)
+library(tidyverse)
+library()
+
+# Load datasets
+cdc <- read_delim(file = "data/cdc.txt", delim = "|") %>%
+  mutate(genhlth = factor(genhlth,
+    levels =  c("poor", "fair", "good", "very good", "excellent"),
+    labels = c("Poor", "Fair", "Good", "Very Good", "Excellent")
+  ))
+
+# Set seed
+set.seed(2468)
+
+cdc_small <- cdc %>%
+  slice_sample(n = 1000)
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+
+<br>
+
+### Exercise 1
+
+Using `cdc_small` construct a the following graphic as precisely as possible.
+
+*Hints:*
+
+-   Example in assigned reading
+-   Hex values: `"#D55E00"` (women) and `#0072B2` (men)
+-   `grey85` might be useful
+-   size 2
+
+**Answer:**
+```{r}
+# preparing dataset
+cdc_small_2 <- dplyr::select(cdc_small, -gender)
+
+# gender titles
+gender_labs <- c("Women", "Men")
+names(gender_labs) <- c("f", "m")
+
+# plot
+cdc_small %>% 
+  ggplot(aes(x = height, y = weight)) +
+  geom_point(data = cdc_small_2, color = "grey85", size = 2) +
+  geom_point(aes(color = gender), size = 2) +
+  facet_grid(gender ~ genhlth,
+             labeller = labeller(gender = gender_labs)
+             ) +
+  scale_color_manual(values = c("#D55E00", "#0072B2")) +
+  labs(
+    x = "Height (inches)",
+    y = "Weight (pounds)"
+  ) +
+  scale_x_continuous(breaks = seq(60, 80, by = 10)) +
+  scale_y_continuous(breaks = seq(100, 300, by = 50)) +
+  theme_minimal() +
+  theme(
+    legend.position = "none"
+  )
+```
+
+
+<br>
+
+### Exercise 2
+
+Using `cdc_small` dataset, re-create a your own version inspired by the plot below.
+
+**Must haves:**
+
+-   Use two non-standard fonts (one for labeling the point and the other for the axes)
+-   Use at least two colors (one for the added point, another for the rest of the points)
+-   A curved arrow used to label the point
+
+Using Bilbo Baggins' responses below to the CDC BRSFF questions, add Bilbo's data point to a scatterplot of `weight` by `height`.
+
+-   `genhlth` - How would you rate your general health? **fair**
+-   `exerany` - Have you exercised in the past month? **1=yes**
+-   `hlthplan` - Do you have some form of health coverage? **0=no**
+-   `smoke100` - Have you smoked at least 100 cigarettes in your life time? **1=yes**
+-   `height` - height in inches: **46**
+-   `weight` - weight in pounds: **120**
+-   `wtdesire` - weight desired in pounds: **120**
+-   `age` - in years: **45**
+-   `gender` - m for males and f for females: **m**
+
+<br>
+
+Adding non-standard fonts can be an ***adventure***. I find this [blog post](https://cran.rstudio.com/web/packages/showtext/vignettes/introduction.html){target="_blank"} to be extremely useful. We are likely to play around with this in class so you will want to follow along. Important packages for using non-standard fonts are `showtext`, `extrafont`, `extrafontdb`, and `sysfonts`. The last 3 generally just need to be installed (not loaded per session). 
+
+*Hint:* 
+
+- Create a new dataset (maybe call it `bilbo` or `bilbo_baggins`) using either `data.frame()` (base R - example in book) or `tibble()` (tidyverse - see help documentation for the function). Make sure to use variable names that exactly match `cdc`'s variable names
+- Search google fonts to find some free fonts to use (can get free fonts from other locations)
+
+**Answer:**
+```{r}
+# font packages
+library(showtext)
+font_add_google("Gochi Hand", "gochi")
+font_add_google("Schoolbell", "bell")
+showtext_auto()
+
+# Bilbo data
+bilbo_baggins <- tibble(
+  genhlth = "fair",
+  exerany = 1,
+  hlpthplan = 0,
+  smoke100 = 1,
+  height = 46,
+  weight = 120,
+  wtdesire = 120,
+  age = 45,
+  gender = "m"
+)
+
+# graph
+cdc_small %>% 
+  ggplot(aes(height, weight)) +
+  geom_point(color = "blue", alpha = 0.2, size = 2) +
+  scale_alpha_continuous() +
+  geom_point(data = bilbo_baggins, color = "red") +
+   labs(
+    x = "Height (in)",
+    y = "Weight (lbs)"
+  ) +
+  annotate(
+    "text", 
+    55, 
+    350, 
+    label = "Bilbo Baggins", 
+    family = "bell", 
+    fontface = "italic", 
+    size = 12, 
+    color = "red") +
+  annotate(
+    geom = "curve", 
+    color = "red", 
+    x = 54, 
+    y = 340, 
+    xend = 46, 
+    yend = 125, 
+    curvature = .3, 
+    arrow = arrow(length = unit(2, "mm"))
+  ) +
+  scale_y_continuous(breaks = seq(100, 400, by = 100), limits = c(100, 400)) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(family = "gochi"),
+    axis.title.y = element_text(family = "gochi")
+  )
+```
+
+
+<br>
+

@@ -1,0 +1,507 @@
+---
+title: "L11 Themes"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(warning = FALSE, message = FALSE, comment = FALSE, dpi = 300)
+```
+
+## Overview
+
+The goal of this lab is to play around with the theme options in `ggplot2` 
+
+## Datasets
+
+We'll be using the `cdc.txt`, `mod_nba2014_15_advanced.txt`, and `NU_admission_data.csv` datasets.
+
+<br>
+
+```{r load-packages-data-seed}
+# Load package(s)
+library(tidyverse)
+library(patchwork)
+
+# Read in the cdc dataset
+cdc <- read_delim(file = "data/cdc.txt", delim = "|") %>%
+  mutate(genhlth = factor(genhlth,
+    levels = c("excellent", "very good", "good", "fair", "poor"),
+    labels = c("Excellent", "Very Good", "Good", "Fair", "Poor")
+  ))
+
+# Read in nba data
+nba_dat <- read_delim(
+    file = "data/mod_nba2014_15_advanced.txt",
+    delim = "|"
+  ) %>%
+  janitor::clean_names()
+
+# Read in NU admission data
+
+
+# Set seed
+set.seed(2468)
+
+# Selecting a random subset of size 100
+cdc_small <- cdc %>% slice_sample(n = 100)
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+Use the `cdc_small` dataset to explore several pre-set `ggthemes`. The code below constructs the familiar scatterplot of `weight` by `height` and stores it in `plot_01`. Display `plot_01` to observe the default theme. **Explore/apply, and display at least 7 other pre-set themes** from the `ggplot2` or `ggthemes` package. Don't worry about making adjustments to the figures under the new themes. Just get a sense of what the themes are doing to the original figure `plot_01`. 
+
+Which theme or themes do you particularly like? Why? 
+
+There should be at least 8 plots for this task. `temp1` is pictured below. Would suggest using `patchwork` or `cowplot` in combination with R chunk options (`fig.height` & `fig.width`) to setup the 8 plots in a more user friendly arrangement. 
+
+<br>
+
+```{r base-plot-ex01, fig.show = "hold", out.width = "50%"}
+# Building plot
+plot_01 <- ggplot(data = cdc_small, aes(x = height, y = weight)) +
+  geom_point(size = 3, aes(shape = genhlth, color = genhlth)) +
+  scale_y_continuous(
+    name = "Weight in Pounds",
+    limits = c(100, 275),
+    breaks = seq(100, 275, 25),
+    trans = "log10",
+    labels = scales::label_number(accuracy = 1, suffix = " lbs")
+  ) +
+  scale_x_continuous(
+    name = "Height in Inches",
+    limits = c(60, 80),
+    breaks = seq(60, 80, 5),
+    labels = scales::label_number(accuracy = 1, suffix = " in")
+  ) +
+  scale_shape_manual(
+    name = "Health?",
+    labels = c("Excellent", "Very Good", "Good", "Fair", "Poor"),
+    values = c(17, 19, 15, 9, 4)
+  ) +
+  scale_color_brewer(
+    name = "Health?",
+    labels = c("Excellent", "Very Good", "Good", "Fair", "Poor"),
+    palette = "Set1"
+  ) +
+  theme(
+    legend.position = c(1, 0),
+    legend.justification = c(1, 0)
+  ) +
+  labs(title = "CDC BRFSS: Weight by Height")
+```
+
+**Answer: I particularly like `theme_classic()` and `theme_tufte()` since these remind me of book-style graphs.**
+```{r}
+# plots
+plot_02 <- plot_01 +
+  theme_bw()
+
+plot_03 <- plot_01 +
+  theme_linedraw()
+
+plot_04 <- plot_01 +
+  theme_light()
+
+plot_05 <- plot_01 +
+  theme_dark()
+
+plot_06 <- plot_01 +
+  theme_minimal()
+
+plot_07 <- plot_01 +
+  theme_classic()
+
+plot_08 <- plot_01 +
+  ggthemes::theme_solarized()
+
+plot_09 <- plot_01 +
+  ggthemes::theme_tufte()
+
+plot_01
+plot_02
+plot_03
+plot_04
+plot_05
+plot_06
+plot_07
+plot_08
+plot_09
+```
+
+
+<br>
+
+### Exercise 2
+
+Using `plot_01` from  and the `theme()` function, attempt to construct the ugliest plot possible (example pictured below).
+
+<br>
+
+**Answer:**
+```{r}
+# plot
+plot_01 +
+  theme(
+    plot.background = element_rect(fill = "hot pink", colour = NA),
+    panel.grid.major.x = element_line(color = "pink", colour = NA, size = 1.5, linetype = "dashed"),
+    panel.grid.major.y = element_line(color = "pink", colour = NA, size = 1.5, linetype = "dashed"),
+    panel.grid.minor = element_line(color = "blue", colour = NA, size = 1.5),
+    legend.background = element_rect(fill = "tan"),
+    axis.ticks.x = element_line(color = "yellow", size = 2),
+    legend.text = element_text(color = "brown"),
+    legend.title = element_text(color = "blue"),
+    axis.text.x = element_text(angle = 340, color = "red"),
+    axis.text.y = element_text(angle = 180, color = "blue"),
+    axis.title.x = element_text(color = "red"),
+    axis.title.y = element_text(color = "blue"),
+    title = element_text(color = "purple")
+  )
+```
+
+
+<br>
+
+### Exercise 3
+
+Using the `mod_nba2014_15.txt` dataset we will finish the process of recreating/approximating the plot type featured in the [http://fivethirtyeight.com/](fivethirtyeight.com) article [Kawhi Leonard Is The Most Well-Rounded Elite Shooter Since Larry Bird](http://fivethirtyeight.com/features/kawhi-leonard-is-the-most-well-rounded-elite-shooter-since-larry-bird/) for any player of your choice for the 2014-2015 season. 
+
+In *L09 Coordinates* we did the data wrangling (directly below) and partially built the desired plot (in the next r chunk).    
+
+```{r data-wrangling}
+## Helper function
+# Returns quartile rank
+quartile_rank <- function(x = 0:99) {
+  # Set quartile
+  quart_breaks <- c(
+    -Inf,
+    quantile(x,
+      probs = c(.25, .5, .75),
+      na.rm = TRUE
+    ),
+    Inf
+  )
+  cut(x = x, breaks = quart_breaks, labels = FALSE)
+}
+
+# Building graphing data
+nba_graph_dat <- nba_dat %>% 
+  filter(g >= 10, mp / g >= 5) %>% 
+  mutate(
+    ts_quant = quartile_rank(ts_perc),
+    trb_quant = quartile_rank(trb_perc),
+    dbpm_quant = quartile_rank(dbpm),
+    ast_quant = quartile_rank(ast_perc),
+    usg_quant = quartile_rank(usg_perc)
+  ) %>% 
+  select(player, contains("_quant")) %>% 
+  # rename(
+  #   "Rebound Rate" = trb_quant,
+  #   "Defensive BPM" = dbpm_quant,
+  #   "Assist Rate" = ast_quant,
+  #   "True Shooting" = ts_quant,
+  #   "Usage Rate" = usg_quant
+  # ) %>% 
+  pivot_longer(
+    cols = -player, 
+    names_to = "variable", 
+    values_to = "value"
+    ) %>% 
+  arrange(player)
+```
+
+<br>
+
+All that is left is some tweaking and theming.
+
+*Hints:*
+
+- All added text, except title, is done with `annotate()`.
+
+- Image width is 8 in, height is 10 in. Can be achieved many ways:
+    - Set figure height and width in R chuck's options
+    - Save image with `ggsave()` and then insert it using markdown code:
+        - `![Caption - leave blank](/path/to/image.png)`
+        - Set figure height and width in R chuck's options and then use `knitr::include_graphic(/path/to/image.png)`
+    
+> Set `fig.width=8` and `fig.height=10` to ensure device prints the graphic consistently. This ensures the aspect ratio and text size selections will be appropriate. Then set `out.fig='50%'` to shrink it down for display. Also set `fig.align='center'`. 
+
+<br>
+
+```{r, fig.width=8, fig.height=10, out.width = "50%", fig.align='center'}
+# Select player
+player_plot <- "LeBron James"
+
+# Build plot
+nba_graph_dat %>%
+  filter(player == player_plot) %>%
+  ggplot(aes(x = variable, y = value)) +
+  geom_col(width = 1, fill = "#F28291") +
+  scale_x_discrete(NULL,
+    expand = c(0, 0),
+    limits = c(
+      "ts_quant", "usg_quant",
+      "dbpm_quant", "trb_quant",
+      "ast_quant"
+    )
+  ) +
+  scale_y_continuous(NULL, expand = c(0, 0)) +
+  # Adding dotted lines
+  geom_hline(yintercept = 1:4, linetype = "dotted") +
+  # Adding vertical lines
+  geom_segment(x = 0.5:4.5, y = 0, xend = 0.5:4.5, yend = 4) +
+  ggtitle(str_c(player_plot, "(2015)", sep = "\n")) +
+  coord_polar() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 24)
+  ) +
+  # Adding sector labels
+  annotate(
+    geom = "text", 
+    label = c("TRUE\nSHOOTING", "USAGE\nRATE", "DEFENSIVE\nBPM", "REBOUND\nRATE", "ASSIST\nRATE"), 
+    x = 1:5, 
+    y = 5,
+    size = 4
+  ) +
+  # Adding quartile labels
+  annotate(
+    geom = "text",
+    label = c("1st-25th", "25th-50th", "50th-75th", "75th-99th"),
+    x = 3, 
+    y = 0.7:3.7, 
+    size = 3
+  )
+```
+
+```{r eval=FALSE, include=FALSE}
+# make skills chart function
+nba_skill_chart <- function(player_name){
+  # Select player
+player_plot <- player_name
+
+# Build plot
+nba_graph_dat %>%
+  filter(player == player_plot) %>%
+  ggplot(aes(x = variable, y = value)) +
+  geom_col(width = 1, fill = "#F28291") +
+  scale_x_discrete(NULL,
+    expand = c(0, 0),
+    limits = c(
+      "ts_quant", "usg_quant",
+      "dbpm_quant", "trb_quant",
+      "ast_quant"
+    )
+  ) +
+  scale_y_continuous(NULL, expand = c(0, 0)) +
+  # Adding dotted lines
+  geom_hline(yintercept = 1:4, linetype = "dotted") +
+  # Adding vertical lines
+  geom_segment(x = 0.5:4.5, y = 0, xend = 0.5:4.5, yend = 4) +
+  ggtitle(str_c(player_plot, "(2015)", sep = "\n")) +
+  coord_polar() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 24)
+  ) +
+  # Adding sector labels
+  annotate(
+    geom = "text", 
+    label = c("TRUE\nSHOOTING", "USAGE\nRATE", "DEFENSIVE\nBPM", "REBOUND\nRATE", "ASSIST\nRATE"), 
+    x = 1:5, 
+    y = 5,
+    size = 4
+  ) +
+  # Adding quartile labels
+  annotate(
+    geom = "text",
+    label = c("1st-25th", "25th-50th", "50th-75th", "75th-99th"),
+    x = 3, 
+    y = 0.7:3.7, 
+    size = 3
+  )
+}
+
+nba_skill_chart("James Harden")
+```
+
+
+<br>
+
+### Exercise 4
+
+We will be making use of your code from exercise 3 from *L08 Layers*. Using the `NU_admission_data.csv` you created two separate plots derived from the single plot depicted in `undergraduate-admissions-statistics.pdf`. Style these plots so they follow a "Northwestern" theme. You are welcome to display the plots separately or design a layout that displays both together (likely one stacked above the other). 
+
+Check out the following webpages to help create your Northwestern theme:
+
+[Visual Identity](https://www.northwestern.edu/brand/visual-identity/index.html){target="_blank"}
+
+- [Color Palettes](https://www.northwestern.edu/brand/visual-identity/color-palettes/index.html){target="_blank"}
+- [Fonts & Typography](https://www.northwestern.edu/brand/visual-identity/fonts-typography/index.html){target="_blank"} --- Need to use [substitute fonts](https://www.northwestern.edu/brand/visual-identity/fonts-typography/substitute-fonts/index.html){target="_blank"}
+
+**Answer:**
+```{r}
+# loading data
+admissions <- read_csv("data/NU_admission_data.csv") %>% 
+  janitor::clean_names()
+
+# font data
+library(showtext)
+font_add_google("Assistant", "assistant")
+showtext_auto()
+
+# # image data
+# library(png)
+# library(grid)
+# img <- readPNG("data/Northwestern_purple_RGB.png", native = TRUE)
+# g <- grid::rasterGrob(img, interpolate = TRUE)
+                
+# wrangling
+bar_dat <- admissions %>% 
+  mutate(
+    cat_a = applications - admitted_students,
+    cat_b = admitted_students - matriculants,
+    cat_c = matriculants
+  ) %>% 
+  select(year, contains("cat_")) %>% 
+  pivot_longer(
+    cols = -year, 
+    names_to = "category", 
+    values_to = "value")
+
+# bar labels
+bar_labels <- admissions %>% 
+  select(-contains("rate")) %>% 
+  pivot_longer(
+    cols = -year,
+    names_to = "category",
+    values_to = "value"
+  ) %>% 
+  mutate(
+    col_label = prettyNum(value, big.mark = ",")
+  )
+
+
+# build bar plot
+bar_plot <- bar_dat %>% 
+  ggplot(aes(year, value)) +
+  geom_col(width = 0.6, aes(fill = category)) +
+  geom_text(
+    data = bar_labels,
+    mapping = aes(label = col_label),
+    size = 1.3,
+    color = "white",
+    vjust = 1,
+    nudge_y = -200
+  ) +
+  theme_classic() +
+  scale_y_continuous(
+    name = "Applications",
+    breaks = seq(0, 50000, 5000),
+    limits = c(0, 50000),
+    labels = scales::label_comma(),
+    expand = c(0,0)
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    breaks = 1999:2019,
+    expand = c(0,0.25)
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("#B6ACD1", "#836EAA", "#4E2A84"),
+    labels = c("Applicants", 
+               "Admitted \nStudents", 
+               "Matriculants")
+  ) +
+  labs(
+    title = "Northwestern University",
+    subtitle = "Undergraduate Admissions 1999 to 2019"
+  ) +
+  theme(
+    legend.justification = c(0.5,1),
+    legend.position = c(0.5,1),
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0.5, family = "assistant"),
+    plot.subtitle = element_text(hjust = 0.5, family = "assistant"),
+    legend.text = element_text(family = "assistant"),
+    legend.background = element_rect(color = "black", fill = "#D8D6D6")
+  )
+
+# saving plot
+ggsave(filename = "nu_admissions_barplot.png", 
+       plot = bar_plot,
+       width = 9,
+       height = 4,
+       units = "in",
+       dpi = 300
+       )
+  
+
+
+# rate data
+rate_dat <- admissions %>% 
+  rename(
+    "Admission Rate" = admission_rate,
+    "Yield Rate" = yield_rate
+  ) %>% 
+  select(year, contains("rate")) %>% 
+  pivot_longer(
+    cols = -year,
+    names_to = "category",
+    values_to = "value"
+  )
+
+# line chart
+line_chart <- rate_dat %>% 
+  ggplot(aes(x = year, y = value, color = category)) +
+  geom_point(aes(shape = category)) +
+  geom_line() +
+  labs(
+    x = "Entering Year",
+    y = "Rate",
+    color = "Rate",
+    shape = "Rate"
+  ) +
+  scale_y_continuous(
+    labels = scales::label_dollar(prefix = "", suffix = "%"),
+    breaks = scales::breaks_width(10)
+  ) +
+  scale_colour_manual(
+    values = c("#B6ACD1", "#836EAA"),
+  ) +
+  geom_text(aes(label = paste0(value, "%")), size = 2.5, nudge_y = 2, ) +
+  theme_classic() +
+  theme(
+    legend.justification = c(0.5,1),
+    legend.position = c(0.5,1),
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0.5, family = "assistant"),
+    legend.text = element_text(family = "assistant"),
+    plot.subtitle = element_text(hjust = 0.5),
+    legend.background = element_rect(color = "black", fill = "#D8D6D6")
+  )
+
+
+bar_plot / line_chart 
+```
+
+<br>

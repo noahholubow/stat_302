@@ -1,0 +1,185 @@
+---
+title: "L05 Maps"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+## Overview
+
+The goal of this lab is to explore various was of building maps with `ggplot2`.
+
+Challenges are not mandatory for students to complete. We highly recommend students attempt them though. *We would expect graduate students to attempt the challenges.*
+
+## Datasets
+
+We'll be using the `US_income.rda` dataset which is already in the `/data` subdirectory in our **data_vis_labs** project. You'll also be downloading your own data to build maps.
+
+```{r load-packages, warning=FALSE, message=FALSE}
+# Load package(s)
+library(tidyverse)
+library(dplyr)
+
+# Load dataset(s)
+load("data/US_income.rda")
+```
+
+## Exercises
+
+### Exercise 1
+
+#### Plot 1
+
+Make a county map of a US state using `geom_polygon()`. Maybe use your home state (mine is below) or a favorite state. Please do not use the the state in example provided in the book. 
+
+Optional: Consider adding major cities (or your home town).
+
+*Hints:*
+
+-   See section [6.1](https://ggplot2-book.org/maps.html#polygonmaps) in our book.
+-   Void theme
+
+**Answer:**
+```{r}
+# creating counties
+ca_counties <- map_data("county", "california") %>% 
+  select(lon = long, lat = lat, group, id = subregion)
+head(ca_counties)
+
+# plotting counties
+ggplot(ca_counties, aes(lon, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "gray") +
+  coord_quickmap() +
+  theme_void()
+```
+
+<br>
+
+#### Plot 2
+
+Now use `geom_sf()` instead. You'll need to download data for this. You can use either the `tigris` ([github page](https://github.com/walkerke/tigris)) or `raster` packages. Either `tigris`' `counties()` with `cb = TRUE` or `raster`'s `getData()` could be useful.
+
+```{r include=FALSE}
+# loading california data
+california <- tigris::counties("california", cb = TRUE)
+
+```
+
+```{r}
+# plot
+ggplot(california) +
+  geom_sf(fill = "white") +
+  coord_sf() +
+  theme_void()
+```
+
+<br>
+
+### Exercise 2
+
+Using `US_income` dataset, recreate the following graphics as precisely as possible.
+
+<br>
+
+```{r}
+# Setting income levels
+US_income <- mutate(
+  US_income,
+  income_bins = cut(
+    ifelse(is.na(median_income), 25000, median_income),
+    breaks = c(0, 40000, 50000, 60000, 70000, 80000),
+    labels = c("< $40k", "$40k to $50k", 
+               "$50k to $60k", "$60k to $70k", "> $70k"),
+    right = FALSE
+  )
+)
+```
+
+<br>
+
+##### Plot 1
+
+*Hints:*
+
+-   `geom_sf()` --- boundary color is `"grey80"` and size is 0.2
+-   `viridis` package (`discrete = TRUE` in `scale_*` function)
+-   Void theme
+
+**Answer:**
+```{r}
+# plot
+US_income %>% 
+  ggplot() +
+  geom_sf(aes(fill = income_bins), color = "grey80", size = 0.2) +
+  viridis::scale_fill_viridis(discrete = TRUE) +
+  coord_sf() +
+  labs(
+    fill = "Median \nIncome"
+  ) +
+  theme_void()
+```
+
+
+<br>
+
+##### Plot 2
+
+*Hints:*
+
+-   [Download developmental version](https://github.com/hrbrmstr/statebins) of `statebins` package
+-   `geom_statebins()`
+-   `viridis` package (`discrete = TRUE` in `scale_*` function)
+-   Statebins theme
+
+**Answer:**
+```{r}
+# plot
+US_income %>% 
+  ggplot() +
+  statebins::geom_statebins(aes(state = name, fill = income_bins)) +
+  viridis::scale_fill_viridis(discrete = TRUE) +
+  statebins::theme_statebins(legend_position = "bottom") +
+  labs(
+    fill = "Median \nIncome"
+  )
+```
+
+<br>
+
+### Exercise 3
+
+Pick any city or foreign country to build a map for. You can dress it up or make it as basic as you want. Also welcome to try building a graphic like that depicted at the end of section [6.5](https://ggplot2-book.org/maps.html#rastermaps) --- use a different region though.
+
+
+**Answer:**
+```{r include=FALSE}
+# loading california data
+los_angeles <- tigris::county_subdivisions(state = "06", county = "037", cb = TRUE) %>% 
+  filter(NAME == "Los Angeles")
+```
+
+```{r}
+# plot
+ggplot(los_angeles) +
+  geom_sf(fill = "white") +
+  coord_sf()
+```
+
+
+<br>
+
+## Challenge(s)
+
+Using the `tidycensus` package and few others, try to create a map like below using [these directions](https://walkerke.github.io/tidycensus/articles/spatial-data.html). Try using a different geographical area and a different variable from the ACS.
+
+Hint: You'll need a developmental version of `mapview` package. To get this you need to run the following code in your console 
+
+```{r, eval=FALSE}
+remotes::install_github("r-spatial/mapview")
+```
+
+<br>

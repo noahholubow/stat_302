@@ -1,0 +1,117 @@
+---
+title: "L09 Coordinates"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+```{r global_options}
+library(knitr)
+opts_chunk$set(warning = FALSE, message = FALSE, comment = FALSE, dpi = 300)
+```
+
+## Datasets
+
+We'll be using the `mod_nba2014_15_advanced.txt` dataset --- add to your project's `/data` subdirectory. The `codebook_mod_nba2014_15_advanced.txt` provides a quick description of the variables in the dataset --- suggest adding it to the `/data` subdirectory as well. 
+
+<br>
+
+```{r load-packages-data}
+# Load package(s)
+library(tidyverse)
+
+# Read in dataset
+nba_dat <- read_delim("data/mod_nba2014_15_advanced.txt", delim = "|") %>%
+  janitor::clean_names()
+```
+
+<br>
+
+## The Exercise
+
+<!-- See the official instructions!! -->
+
+Using the `mod_nba2014_15.txt` dataset we will begin the process of trying to recreate/approximate the plot type featured in the [http://fivethirtyeight.com/](fivethirtyeight.com) article [Kawhi Leonard Is The Most Well-Rounded Elite Shooter Since Larry Bird](http://fivethirtyeight.com/features/kawhi-leonard-is-the-most-well-rounded-elite-shooter-since-larry-bird/) for any player of your choice for the 2014-2015 season. 
+
+### Start with data wrangling
+
+When data wrangling we will need a helper function for creating the quartiles for players. Additionally, it will be useful to exclude players that played less than 10 games or played less than 5 minutes a game. That is, we only want to include "qualified" players.
+
+<br>
+
+```{r helper-function}
+# Returns quartile rank
+quartile_rank <- function(x = 0:99) {
+  # Set quartile
+  quart_breaks <- c(
+    -Inf,
+    quantile(x,
+      probs = c(.25, .5, .75),
+      na.rm = TRUE
+    ),
+    Inf
+  )
+  cut(x = x, breaks = quart_breaks, labels = FALSE)
+}
+```
+
+<br>
+
+**Add comments to** the code below where indicated. The added comments should concisely describe what the following line(s) of code do in the data wrangling process  
+
+```{r data-wrangling}
+# Graphical data
+nba_graph_dat <- nba_dat %>% 
+  # filtering out anyone with less than 10 games or who played less than 5 minutes per game
+  filter(g >= 10, mp / g >= 5) %>% 
+  # creating quartile ranks for each player
+  mutate(
+    ts_quant = quartile_rank(ts_perc),
+    trb_quant = quartile_rank(trb_perc),
+    dbpm_quant = quartile_rank(dbpm),
+    ast_quant = quartile_rank(ast_perc),
+    usg_quant = quartile_rank(usg_perc)
+  ) %>% 
+  # choosing only columns with quant and the player colimn
+  select(player, contains("_quant")) %>% 
+  # using pivot longer to create separate rows for each quant
+  pivot_longer(
+    cols = -player, 
+    names_to = "variable", 
+    values_to = "value"
+    ) %>% 
+  # arranging by player name to group together
+  arrange(player) %>% 
+  filter(player == "LeBron James")
+```
+
+<br>
+
+#### Start building the plot
+```{r}
+# plot
+nba_graph_dat %>% 
+  ggplot(aes(variable, value)) +
+  geom_bar(
+    stat = "identity", 
+    width = 1, 
+    fill = "#FF91A7") +
+  geom_hline(
+    yintercept = 1:4, 
+    linetype = "dotted") +
+  scale_x_discrete(
+    name = NULL,
+    limits = c("ts_quant", "usg_quant", "dbpm_quant", "trb_quant", "ast_quant")
+  ) +
+  labs(
+    title = str_c(nba_graph_dat$player, "\n(2015)"),
+    y = NULL
+  ) +
+  coord_polar()
+```
+
+

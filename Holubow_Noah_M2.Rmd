@@ -1,0 +1,298 @@
+---
+title: "M2 Midterm II"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    highlight: "tango"
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Overview
+
+This lab focuses on the construction and manipulation of datasets to create a desired graphic. Manipulating/preparing data to be visualized is typically the rule and is almost entirely unavoidable when constructing somewhat complex graphics. This includes being able to create/generate fake data when attempting to depict conceptual or foundational ideas. The lab also tests your ability to utilize `ggplot2` functions that have not been directly used in previous labs. By having you use unfamiliar functions we are gauging your ability to use the documentation and your understanding of the basic structure of functions in `ggplot2`. 
+
+You are free to use any resource at your disposal such as notes, past labs, the internet, fellow students, instructor, TA, etc. However, do not simply copy and paste solutions. This is a chance for you to assess how well you have come to know `ggplot2` and determine if you are developing the practical skills needed to utilize `ggplot2` in the future. 
+
+## Datasets 
+
+We will be using the `ga_election_data.csv` dataset which contains Georgia county level results for the 2020 US presidential election.
+
+<br>
+
+```{r load-packages-data-seed}
+# Load package(s)
+library(tidyverse)
+library(patchwork)
+
+# Read in the dataset(s)
+ga <- read_csv("data/ga_election_data.csv") %>% 
+  janitor::clean_names()
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+The figure for this exercise has width 7 inches and height 7 inches.
+
+Using the `ga_election_data.csv` dataset in conjunction with mapping data retrieved using `tigris::counties()` replicate, as close as possible, the graphic below. Note the graphic is comprised of two plots displayed side-by-side. The plots both use the same shading scheme (i.e. scale limits and fill options). 
+
+**Background Information:** Holding the 2020 US Presidential election during the COVID-19 pandemic was a massive logistical undertaking. Voter engagement was extremely high which produced a historical high voting rate. Voting operations, headed by states, ran very monthly and encountered few COVID-19 related issues. The state of Georgia did a particularly good job at this by encouraging their residents to use early voting. About 75% of the vote in a typical county voted early! Ignoring county boundaries, about 4 in every 5 voters, 80%, in Georgia voted early. 
+
+While it is clear that early voting was the preferred option for Georgia voters, we want to investigate whether or not one candidate/party utilized early voting more than the other --- we are focusing on the two major candidates. We created the graphic below to explore the relationship of voting mode and voter preference, which you are tasked with recreating. 
+
+**After replicating the graphic** provide a summary of how the two maps relate to one another. That is, what insight can we learn from the graphic. 
+
+*Hints:* 
+ 
+ - When loading data set argument `cb = TRUE`
+ - Data wrangling will be necessary
+ - Absentee and advanced voting are both forms of early voting
+ - `left_join()` will be needed to to join together data (map data should be left dataset)
+ - Make a dataset for each map, then arrange plots accordingly
+ - useful hex colors: `"#5D3A9B"` and `"#1AFF1A"`
+ 
+ 
+ 
+ **Answer:**
+```{r include=FALSE}
+# loading california data
+georgia <- tigris::counties("georgia", cb = TRUE) %>% 
+  left_join(ga, by = c("NAME" = "county")) %>% 
+  mutate(
+    early = (advanced_voting_votes + absentee_by_mail_votes) / total_votes
+  ) %>% 
+  filter(candidate != "Jo Jorgensen")
+```
+
+```{r, fig.height = 7, fig.width = 7}
+# biden plot
+biden <- georgia %>% 
+  filter(candidate == "Joseph R. Biden") %>% 
+  ggplot() +
+  geom_sf(aes(fill = early)) +
+    labs(
+    title = "Joseph R. Biden",
+    subtitle = "Democratic Nominee"
+  ) +
+  scale_fill_gradient2(
+      limits = c(0.5,1),
+      low = "#1AFF1A", 
+      mid = "white",
+      midpoint = 0.75,
+      high = "#5D3A9B",
+      na.value = "5D3A9B",
+      breaks = c(0.5, 0.75, 1),
+      labels = c("50%", "75%", "100%")
+      ) +
+    coord_sf() +
+    theme_void() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12),
+      legend.position = "none",
+    )
+
+# Trump plot
+trump <- georgia %>% 
+  filter(candidate == "Donald J. Trump") %>% 
+  ggplot() +
+  geom_sf(aes(fill = early)) +
+    labs(
+    title = "Donald J. Trump",
+    subtitle = "Republican Nominee"
+  ) +
+  scale_fill_gradient2(
+      limits = c(0.5,1),
+      low = "#1AFF1A", 
+      mid = "white",
+      midpoint = 0.75,
+      high = "#5D3A9B",
+      na.value = "5D3A9B",
+      breaks = c(0.5, 0.75, 1),
+      labels = c("50%", "75%", "100%")
+      ) +
+    coord_sf() +
+    theme_void() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12),
+      legend.position = c(0.9,0.82),
+      legend.title = element_blank(),
+    )
+
+# overall plot
+biden + trump +
+plot_annotation(
+  title = "Percentage of votes from early voting",
+  caption = "Georgia: 2021 US Presidential Election Results",
+  theme = theme(
+  plot.title = element_text(face = "bold", size = 24),
+  plot.caption = element_text(size = 10)
+    )
+  )
+
+```
+
+**Answer: from these two graphics, we see that they have a somewhat inverse relationship. The plot for President Biden shows us that voters for Biden (Democrats) are much more likely to vote early than voters for Trump (Republicans). Very strong purple areas tend to be less strong for the other party and vice versa.**
+
+<br>
+
+### Exercise 2
+
+The figure for this exercise has width 6 inches and height 6 inches.
+
+Create a fake/randomly generated dataset to approximate the graphic shown below. Since the dataset is fake your graphic will probably appear different than the one shown (unless you set the seed), but the plot's theme characteristics (titles, aesthetics, legend, etc... ) should be the same. 
+
+**Hints:**
+
+- Set the seed of the random number generator to 2468.
+- Generated 20 observations per group (60 total observations).
+- Generated each group's `x` values using a normal distribution for each group. Each group had a different mean, but all shared the same standard deviation.
+- Generated each group's `y` values by adding white noise (random error) from a normal distribution to the `x` values. Each group's white noise had mean 0, but each had a different standard deviation.
+- Set the coordinates to be equal and utilized a pre-set theme.
+- Note the order of plotting for the points and the ellipses. 
+
+<br>
+
+```{r, fig.height = 6, fig.width = 6}
+# setting seed
+set.seed(2468)
+
+# x, y values
+x <- c(
+    rnorm(n = 20, sd = 2, mean = 5), 
+    rnorm(n = 20, sd = 2, mean = 10), 
+    rnorm(n = 20, sd = 2, mean = 15)
+  )
+y <- x + c(
+    rnorm(n = 20, mean = 0, sd = 1), 
+    rnorm(n = 20, mean = 0, sd = 2), 
+    rnorm(n = 20, mean = 0, sd = 3)
+  )
+
+# creating tibble with numbers
+values <- 
+  tibble(
+    x = x,
+    y = y,
+    group = rep(c("Low", "Medium", "High"), each = 20)
+  ) %>% 
+  mutate(group = factor(group,
+    levels =  c("High", "Medium", "Low"),
+    labels = c("High", "Medium", "Low")
+  ))
+
+# plot
+values %>% 
+  ggplot(aes(x, y)) +
+  geom_point(
+    aes(color = group, shape = group),
+    size = 3
+  ) +
+  stat_ellipse(
+    geom = "polygon",
+    alpha = 0.2,
+    aes(fill = group, color  = group),
+  ) +
+  scale_shape_manual(
+    limits = c("High", "Medium", "Low"), # defining order of event types to map to manual shapes
+    values = c(16, 17, 15) # defining manual shape types corresponding to values of event_type
+     ) + 
+   scale_color_manual(
+    limits = c("High", "Medium", "Low"),
+    values = c("#F8766D", "#00BA38", "#619CFF") # manually setting point colors
+   ) +
+   scale_fill_manual(
+    limits = c("High", "Medium", "Low"),
+    values = c("#F8766D", "#00BA38", "#619CFF") # manually setting point colors
+   ) +
+  labs(
+    color = "Group",
+    fill = "Group",
+    shape = "Group"
+  ) +
+  coord_equal() +
+  theme_classic() +
+  theme(
+    legend.position = c(0.2, 0.8)
+  )
+```
+
+
+<br>
+
+### Exercise 3
+
+The figure for this exercise has width 6 inches and height 6 inches.
+
+Build a dataset to replicate the graphic shown below. The dataset is not randomly generated in this case so an extremely close replication should be possible. 
+
+**Hints:**
+
+* The dataset will have three variables: `x`, `y`, and `fill_amount`.
+* The graphic works by creating a small **tile** for each `x` and `y` value along the indicated axes and fills the title according to the value supplied by `fill_amount`.
+* The structure of the dataset is displayed below. There are 40,401 observations/rows (should realize that each row corresponds to one small tile). By examining the displayed observations it should be clear that `x` values go from -1 to 1 by steps of 0.01. It might not be as obvious, but `y` values also go from -1 to 1 by steps of 0.01. Should make use of `seq()` and `rep()` to create these two columns of the dataset. Examination of the displayed observations and the provided graphic should make clear that the `fill` for each tile is either calculated using $x^3-y$ or $y-x^3$ (should be able to determine which one). 
+* The **function** can be drawn using the equation provided on the graphic. The color of the **function** is a 50-50 mix of red and blue.
+* Getting the superscript on the added text will require setting an option of `parse = TRUE` in the appropriate function/layer. 
+
+**Answer:**
+```{r, fig.height = 6, fig.width = 6}
+# graph data
+input <- seq(-1,1, 0.01)
+
+dat <- tibble(
+  x = rep(input, times = length(input)),
+  y = rep(input, each = length(input)),
+  fill_amount = x^3 - y
+)
+
+# plot
+dat %>% 
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = fill_amount)) +
+  stat_function(
+    fun = function(x) x^3, 
+    color = rgb(0.5, 0, 0.5)) +
+  scale_fill_gradient2(
+      limits = c(-2,2),
+      low = "red", 
+      mid = "white",
+      midpoint = 0,
+      high = "blue",
+      breaks = c(-2, -1, 0, 1, 2),
+      ) +
+  annotate(
+    geom = "text",
+    x = 0, y = 0.15,
+    label = "x^{3}",
+    size = 8,
+    parse = TRUE
+  ) +
+  scale_x_continuous(
+    limits = c(-1,1),
+    expand = c(0,0)) +
+  scale_y_continuous(
+    limits = c(-1,1), 
+    expand = c(0,0)) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    axis.ticks = element_line(color = "black"),
+    axis.line = element_blank()
+  )
+```
+<br>
+

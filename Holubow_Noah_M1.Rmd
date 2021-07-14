@@ -1,0 +1,292 @@
+---
+title: "M1 Midterm I"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    highlight: "tango"
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Overview
+
+Exercises 1 & 2 ask you to replicate plots and provide some basic insight into what the graphics are communicating. Exercise 3 asks you to provide short descriptions/explanations regarding issues and concepts in `ggplot2`. 
+
+You are free to use any resource at your disposal such as notes, past labs, the internet, fellow students, instructor, TA, etc. However, do not simply copy and paste solutions. This is a chance for you to assess how well you have come to know `ggplot2` and determine if you are developing the practical skills needed to utilize `ggplot2` in the future. 
+
+## Datasets 
+
+We will need the instructor provided `stephen_curry_shotdata_2014_15.txt` dataset and the `nbahalfcourt.jpg`. The variables should be fairly straightforward after some inspection of the dataset, but we have provided a description of variables just in case.
+
+* `GAME_ID ` - Unique ID for each game during the season
+* `PLAYER_ID` - Unique player ID
+* `PLAYER_NAME` - Player's name
+* `TEAM_ID` - Unique team ID
+* `TEAM_NAME` - Team name          
+* `PERIOD` - Quarter or period of the game
+* `MINUTES_REMAINING` - Minutes remaining in quarter/period
+* `SECONDS_REMAINING` - Seconds remaining in quarter/period
+* `EVENT_TYPE` - `Missed Shot` or `Made Shot`
+* `SHOT_DISTANCE` - Shot distance in feet
+* `LOC_X` - X location of shot attempt according to tracking system
+* `LOC_Y` - Y location of shot attempt according to tracking system
+
+<br>
+
+```{r load-packages-data-seed}
+# Load package(s)
+library(tidyverse)
+library(patchwork)
+library(grid)
+library(jpeg)
+
+# Read in the dataset(s)
+curry <- read_delim(file = "data/stephen_curry_shotdata_2014_15.txt", delim = "|") %>% 
+  janitor::clean_names()
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+Figures for this exercise have width 6 inches and height 4 inches.
+
+Using the `stephen_curry_shotdata_2014_15.txt` dataset replicate, as close as possible, the 2 graphics below. After replicating the plots provide a summary of what the graphics indicate about Stephen Curry's shot selection (i.e. distance from hoop) and shot make/miss rate and how they relate/compare across distance and game time (i.e. across quarters/periods). 
+
+<br>
+
+#### Plot 1
+**Answer: it appears that more shots, whether made or missed, occur in the first and third quarters, as shown by the width of the boxplots. We also see that the average distances for the shot selection are much lower for made shots (around 20) than for missed shots (around 25). Missed shots have greater variance.**
+```{r, fig.height = 4, fig.width = 6}
+# plot
+curry %>% 
+  mutate(
+    period = factor(period, c("Q1", "Q2", "Q3", "Q4", "OT"), # adding factor for each period
+    levels =  c("1", "2", "3", "4", "5"), # reordering periods
+    labels = c("Q1", "Q2", "Q3", "Q4", "OT")), # relabeling periods
+  ) %>% 
+  ggplot(aes(x = period, y = shot_distance)) + # defining mapping variables
+  geom_boxplot(varwidth = TRUE) + # creating boxplot with variable width
+  facet_grid(~ event_type) + # faceting around event type
+  labs(
+    x = "Quarter/Period", # x-axis label
+    y = NULL, # y-axis label
+    title = "Stephen Curry", # title
+    subtitle = "2014-2015" # subtitle
+  ) +
+  scale_y_continuous(labels = scales::label_number(prefix = "", suffix = " ft")) + # y-axis ticks
+  theme_minimal() + # minimal theme
+  theme(
+    plot.title = element_text(face = "bold", size = 14), # bolding title, changing size
+    plot.subtitle = element_text(size = 12),
+    strip.text.x = element_text(face = "bold", size = 12), # bolding facet titles
+    axis.title = element_text(face = "bold"), # bolding axis labels
+    panel.grid.major.x = element_blank(), # removing major vertical lines
+    panel.grid.minor.y = element_blank() # removing minor horizontal lines
+  )
+```
+
+
+<br>
+
+**Hints for second plot:** 
+
+- Use `minimal` theme and adjust from there
+- Useful hex colors: `"#5D3A9B"`, `"#E66100"`
+- No padding on vertical axis
+
+<br>
+
+#### Plot 2
+```{r, fig.height = 4, fig.width = 6}
+# plot
+curry %>% 
+  ggplot(aes(x = shot_distance)) + # defining mapping variables
+  geom_density( # setting up density plot
+    aes(
+      color = event_type, # mapping event type to line color aesthetic
+      fill = event_type # mapping event type to fill aesthetic
+      ),
+    alpha = 0.3, # setting transparency
+    show.legend = FALSE
+    ) +
+  scale_fill_manual(values = c("#5D3A9B", "#E66100")) + # defining fill colors
+  scale_color_manual(values = c("#5D3A9B", "#E66100")) + # defining line colors
+  labs(
+    x = NULL, # no x-axis label
+    y = NULL, # no y-axis label
+    title = "Stephen Curry",
+    subtitle = "Shot Densities (2014-2015)"
+  ) +
+  scale_x_continuous(labels = scales::label_number(suffix = " ft"), expand = c(0,0)) + # modifying axis ticks
+  scale_y_continuous(labels = NULL) +
+  theme_minimal() + # minimal theme
+  annotate(
+    geom = "text", # adding text annotation
+    x = 7, # annotation x-value
+    y = 0.04, # annotation y-value
+    label = "Made Shots", # annotation text
+    color = "#5D3A9B" # annotation color
+  ) +
+   annotate(
+    geom = "text", # adding text annotation
+    x = 32, # annotation x-value
+    y = 0.07, # annotation y-value
+    label = "Missed Shots", # annotation text
+    color = "#E66100" # annotation color
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14), # bolding title, changing size
+    plot.subtitle = element_text(size = 12),
+    panel.grid = element_blank(), # removing grid lines
+    axis.text.x = element_text(margin = margin(-10,0,0,0))
+  )
+```
+
+
+<br>
+
+### Exercise 2
+
+Figures for this exercise have width 7 inches and height 7 inches.
+
+Using the `stephen_curry_shotdata_2014_15.txt` dataset replicate, as close as possible, the 2 graphics below. We have provided some skeleton code to get you started. You should start with the skeleton code and add to it to replicate the graphics. Where indicated, add comments to describe what the provided code is doing.
+
+After examining the two graphics, what do you conclude about Stephen Curry's shot selection (i.e. distance form hoop) for the 2014-2015 season? Out of the four graphics (two from Exercise 1 and two from Exercise 2), which graphic(s) do you find the most useful when trying to understand Stephen Curry's shot selection? If you find them all useful, explain what information is better communicated in each.
+
+**Answer: I think that the second, third, and fourth graphs are all useful. Plot #2 in Exercise #1 helps us see that Curry makes more shots when he is close to the hoop. In other words, it's better for him to be closer. This is confirmed by Plot #2 in Exercise #2, which shows us that a lot of the made shots are concentrated within the three-point line. The missed shots are very heavily concentrated outside of this line, although the plot is somewhat cluttered. But this shows that Curry is better off not attempting three-point field goals. And in Plot #1 in Exercise #2, we see that Curry attempts lots of shots right near the net (perhaps layups) and right on the edge of the three-point line. Perhaps it might be good for him to focus on the red areas within the free throw line and the net.**
+
+#### Plot 1
+```{r, fig.height = 7, fig.width = 7}
+# loading court graphic
+court <- rasterGrob(readJPEG(source = "data/nbahalfcourt.jpg"), # reading in court graphic
+  width = unit(1, "npc"), height = unit(1, "npc") # setting dimensions for court graphic
+)
+
+# plot
+curry %>% 
+ggplot(aes(x = loc_x, y = loc_y)) + # defining mapping variables
+  # adding basketball court image
+  annotation_custom(
+    grob = court, # adding court annotation graphic
+    xmin = -250, xmax = 250, # setting x-coordinate bounds
+    ymin = -52, ymax = 418 # setting y-coordinate bounds
+  ) +
+  coord_fixed() + # forcing specified ratio between data units on axes
+  xlim(250, -250) + # x-axis limits
+  ylim(-52, 418) + # y-axis limits
+  geom_hex( # adding hex geom
+      bins = 20, # defining number of bins for data
+      alpha = 0.7, # defining transparency of hexagons
+      color = "gray") + # defining outline color of hexagons
+  scale_fill_gradient(
+    low = "yellow", # setting color for low values of fill gradient
+    high = "red", # setting color for high values of fill gradient
+    limits = c(0, 15), # limits for number of shots taken for given hexagon
+    na.value = "red", # fill color for NA values
+    name = "Shot\nAttempts", # legend title
+    labels = c("0", "5", "10", "15+")) + # legend bin labels
+  labs(
+    title = "Stephen Curry", # plot title
+    subtitle = "Shot Chart (2014-2015)" # plot subtitle
+  ) +
+  theme_void() + # no theme
+  theme(
+    plot.title = element_text(face = "bold", size = 14), # bolding title, changing size
+    plot.subtitle = element_text(size = 12) # changing subtitle size
+  )
+```
+
+#### Plot 2
+
+<br>
+
+**Hint:**
+
+- Useful hex colors: `"#5D3A9B"`, `"#E66100"`
+
+**Answer:**
+```{r, fig.height = 7, fig.width = 7}
+# plot
+curry %>% 
+ggplot(aes(x = loc_x, y = loc_y)) + # defining mapping variables
+ # adding basketball court image
+  annotation_custom(
+    grob = court, # adding court annotation graphic
+    xmin = -250, xmax = 250, # setting x-coordinate bounds
+    ymin = -52, ymax = 418 # setting y-coordinate bounds
+  ) +
+  coord_fixed() + # forcing specified ratio between data units on axes
+  xlim(250, -250) + # x-axis limits
+  ylim(-52, 418) + # y-axis limits
+  geom_point( # creating scatterplot
+    aes(
+      color = event_type, # mapping color aesthetic to event type
+      shape = event_type # mapping shape aesthetic to event type
+      ),
+    size = 5 # setting size of points
+  ) +
+  scale_shape_manual(
+    labels = c("Made Shot", "Missed Shot"), # defining order of event types to map to manual shapes
+    values = c(1, 4) # defining manual shape types corresponding to values of event_type
+    ) + 
+  scale_color_manual(
+    values = c("#5D3A9B", "#E66100") # manually setting point colors
+  ) +
+  labs(
+    title = "Stephen Curry", # setting title
+    subtitle = "Shot Chart (2014-2015)" # setting subtitle
+  ) +
+  theme_void() + # no theme
+  theme(
+    plot.title = element_text(face = "bold", size = 14), # bolding title and changing size
+    plot.subtitle = element_text(size = 12), # changing size of subtitle
+    legend.position = "bottom", # legend at bottom of plot
+    legend.title = element_blank(), # no legend title
+  )
+```
+
+### Exercise 3
+
+<br>
+
+##### Part 1
+In 3-5 sentences, describe the core concept/idea and structure of the `ggplot2` package.
+
+**Answer: ggplot2 is an R package that contains many helpful functions to produce statistical graphics. Though there are many default settings, the package is extremely customizable and can control nearly any aspect of the plot, which is not true of other graph generating programs like Excel. The entire package is structured around a grammar that must be used to build each component of the graphic iteratively by adding on layers. In addition to the data, all plots are composed of a mapping, which has five components: layers (geoms or stats), scales, coordinates, facets, and themes.**
+
+<br>
+
+##### Part 2
+Describe each of the following:
+
+1. `ggplot()`
+**Answer: this is the function used to make complex plots with just a few lines of code. It sets up all the necessary panels, labels, and mapping space.**
+2. `aes()`
+**Answer: this is a key component of every plot and defines the set of aesthetic mappings between variables from your dataset and their visual properties.**
+3. `geoms`
+**Answer: this is a layer that describes how to render each observation. For example, there are geoms for histograms, scatterplots, bar plots, and so on.**
+4. `stats`
+**Answer: these are the underlying statistical transformations that can occur when generating a plot. An example is "bin," which produces count and density as output variables.**
+5. `scales`
+**Answer: scales control the mapping from data to the actual aesthetics. Scales will use the data to visualize it (color, size, position, shape) and also help control the axes and legends. There are three main types of scales: position, color, and other aesthetics.**
+6. `theme()`
+**Answer: the theme system does not manipulate the rendering of the data or any statistical transformations but rather affects the aesthetic appearance of the plots. Theme lets you control fonts, backgrounds, colors, positions, and so on. These are all the non-data elements that are in the user's control.**
+
+<br>
+
+##### Part 3
+Explain the difference between using this code `geom_point(aes(color = VARIABLE))` as opposed to using `geom_point(color = VARIABLE)`.
+**Answer: aes(color = VARIABLE) will map the color aesthetic to the variable values, thereby plotting points, lines, etc. in a different color for each value the variable takes on. Color outside of the aesthetic argument simply defines the color for all points if a color code is supplied, and setting it equal to a VARIABLE will not work.**
+<br>

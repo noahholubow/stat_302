@@ -1,0 +1,313 @@
+---
+title: "L08 Layers"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(warning = FALSE, message = FALSE, comment = FALSE)
+```
+
+## Overview
+
+The goal of this lab is to explore more plots in `ggplot2`. Specifically we will be focusing on error bars for uncertainty and practice using multiple layers.
+
+## Datasets
+
+We'll be using the `tech_stocks.rda` dataset which is already in the `/data` subdirectory in our **data_vis_labs** project. We have a new dataset, `NU_admission_data.csv`, which will need to be downloaded and added to our `/data` subdirectory. We will also be using the `mpg` dataset which comes packaged with `ggplot2` --- use `?ggplot2::mpg` to access its codebook.
+
+<br>
+
+```{r load-packages-data}
+# Load package(s)
+library(tidyverse)
+library(patchwork)
+
+# Load datasets
+load("data/tech_stocks.rda")
+admissions <- read_csv("data/NU_admission_data.csv") %>% 
+  janitor::clean_names()
+```
+
+<br>
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+Using `mpg` and the `class_dat` dataset created below, recreate the following graphic as precisely as possible in two different ways.
+
+*Hints:*
+
+- Transparency is 0.6
+- Horizontal position adjustment is 0.1
+- Larger points are 5
+
+<br>
+
+```{r class_dat}
+# Additional dataset for plot
+class_dat <- mpg %>%
+  group_by(class) %>%
+  summarise(
+    n = n(),
+    mean_hwy = mean(hwy),
+    label = str_c("n = ", n, sep = "")
+  )
+```
+
+<br>
+
+#### Plot 1 -- using `mean_hwy`
+
+**Answer:**
+```{r}
+# plot
+mpg %>% 
+  ggplot() +
+  geom_jitter(data = mpg, aes(x = class, y = hwy), width = 0.1) +
+  geom_point(data = class_dat, aes(x = class, y = mean_hwy), color = "red", alpha = 0.6, size = 5) +
+  labs(
+    x = "Vehicle class",
+    y = "Highway miles per gallon"
+  ) +
+  geom_text(data = class_dat, aes(x = class, y = 10, label = label)) +
+  ylim(c(10,45)) +
+  theme_minimal()
+
+```
+
+
+
+#### Plot 2 -- not using `mean_hwy`
+
+**Answer:**
+```{r}
+# plot
+mpg %>% 
+  ggplot(aes(x = class, y = hwy)) +
+  geom_jitter(width = 0.1) +
+  geom_point(stat = "summary", fun = "mean", color = "red", alpha = 0.6, size = 5) +
+  labs(
+    x = "Vehicle class",
+    y = "Highway miles per gallon"
+  ) +
+  geom_text(data = class_dat, aes(x = class, y = 10, label = label)) +
+  ylim(c(10,45)) +
+  theme_minimal()
+```
+
+
+<br>
+
+### Exercise 2
+
+Using `perc_increase` dataset derived from the `tech_stocks` dataset, recreate the following graphic as precisely as possible.
+
+*Hints:*
+
+- Hex color code `#56B4E9`
+- Justification of 1.1
+- Size is 5
+
+<br>
+
+```{r percent-increase}
+# percentage increase data
+perc_increase <- tech_stocks %>%
+  arrange(desc(date)) %>%
+  distinct(company, .keep_all = TRUE) %>%
+  mutate(
+    perc = 100 * (price - index_price) / index_price,
+    label = str_c(round(perc), "%", sep = ""),
+    company = fct_reorder(factor(company), perc)
+  )
+```
+
+**Answer:**
+```{r}
+# plot
+perc_increase %>% 
+  ggplot(aes(x = perc, y = company)) +
+  geom_bar(stat = "identity", fill = "#56B4E9") +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal() +
+  geom_text(aes(y = company, label = sprintf("%1.0f%%", perc)), color = "white", hjust = 1.1, size = 5) +
+  scale_x_continuous(expand = c(0,0), name = NULL)
+```
+
+
+<br>
+
+### Exercise 3
+
+***
+We will need to do some data wrangling, which we will do together in class
+
+***
+
+Using `NU_admission_data.csv` create two separate plots derived from the single plot depicted in `undergraduate-admissions-statistics.pdf`. They overlaid two plots on one another by using two y-axes. Create two separate plots that display the same information instead of trying to put it all in one single plot --- consider stacking them using `patchwork` or `cowplot`. There is one major error they make with the bars in their graphic. Explain what it is.
+
+When including detailed labeling like this take care to pick label fonts and colors so the text doesn't take away the from the message of the data (the trend in these plots). With these labels you could image removing the y-axes altogether so they don't distract the reader/consumer. 
+
+Which approach do you find communicates the information better, their single plot or the two plot approach? Why?
+
+*Hints:*
+
+- Form 4 datasets (helps you get organized, but not entirely necessary): 
+    - 1 that has bar chart data, 
+    - 1 that has bar chart label data, 
+    - 1 that has line chart data, and 
+    - 1 that has line chart labels 
+- Consider using `ggsave()` to save the image with a fixed size so you it is easier to pick font sizes.
+
+**Answer: the bars' heights double count admitted and waitlisted students in the total number of applications since they do not take into account subsets. Also, I find that the two separate plots are much easier to read rather than trying to keep track of many different values on one graph. They are also aesthetically more pleasing.**
+
+
+```{r}
+# wrangling
+bar_dat <- admissions %>% 
+  mutate(
+    cat_a = applications - admitted_students,
+    cat_b = admitted_students - matriculants,
+    cat_c = matriculants
+  ) %>% 
+  select(year, contains("cat_")) %>% 
+  pivot_longer(
+    cols = -year, 
+    names_to = "category", 
+    values_to = "value")
+
+# bar labels
+bar_labels <- admissions %>% 
+  select(-contains("rate")) %>% 
+  pivot_longer(
+    cols = -year,
+    names_to = "category",
+    values_to = "value"
+  ) %>% 
+  mutate(
+    col_label = prettyNum(value, big.mark = ",")
+  )
+
+
+# build bar plot
+bar_plot <- bar_dat %>% 
+  ggplot(aes(year, value)) +
+  geom_col(width = 0.6, aes(fill = category)) +
+  geom_text(
+    data = bar_labels,
+    mapping = aes(label = col_label),
+    size = 1.3,
+    color = "white",
+    vjust = 1,
+    nudge_y = -200
+  ) +
+  theme_classic() +
+  scale_y_continuous(
+    name = "Applications",
+    breaks = seq(0, 50000, 5000),
+    limits = c(0, 50000),
+    labels = scales::label_comma(),
+    expand = c(0,0)
+  ) +
+  scale_x_continuous(
+    name = NULL,
+    breaks = 1999:2019,
+    expand = c(0,0.25)
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("#B6ACD1", "#836EAA", "#4E2A84"),
+    labels = c("Applicants", 
+               "Admitted \nStudents", 
+               "Matriculants")
+  ) +
+  labs(
+    title = "Northwestern University",
+    subtitle = "Undergraduate Admissions 1999 to 2019"
+  ) +
+  theme(
+    legend.justification = c(0.5,1),
+    legend.position = c(0.5,1),
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+
+# saving plot
+ggsave(filename = "nu_admissions_barplot.png", 
+       plot = bar_plot,
+       width = 9,
+       height = 4,
+       units = "in",
+       dpi = 300
+       )
+  
+
+```
+
+
+```{r}
+# rate data
+rate_dat <- admissions %>% 
+  rename(
+    "Admission Rate" = admission_rate,
+    "Yield Rate" = yield_rate
+  ) %>% 
+  select(year, contains("rate")) %>% 
+  pivot_longer(
+    cols = -year,
+    names_to = "category",
+    values_to = "value"
+  )
+
+# line chart
+line_chart <- rate_dat %>% 
+  ggplot(aes(x = year, y = value, color = category)) +
+  geom_point(aes(shape = category)) +
+  geom_line() +
+  labs(
+    x = "Entering Year",
+    y = "Rate",
+    color = "Rate",
+    shape = "Rate"
+  ) +
+  scale_y_continuous(
+    labels = scales::label_dollar(prefix = "", suffix = "%"),
+    breaks = scales::breaks_width(10)
+  ) +
+  scale_colour_manual(
+    values = c("#B6ACD1", "#836EAA"),
+  ) +
+  geom_text(aes(label = paste0(value, "%")), size = 2.5, nudge_y = 2, ) +
+  theme_classic() +
+  theme(
+    legend.justification = c(0.5,1),
+    legend.position = c(0.5,1),
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
+```
+
+
+```{r}
+# combining plots
+bar_plot / line_chart
+```
+
+

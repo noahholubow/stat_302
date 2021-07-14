@@ -1,0 +1,335 @@
+---
+title: "L03 ggplot II"
+subtitle: "Data Visualization (STAT 302)"
+author: "Noah Holubow"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: "tango"
+---
+
+## Overview
+
+The goal of this lab is to continue the process of unlocking the power of `ggplot2` through constructing and experimenting with a few basic plots.
+
+## Datasets
+
+We'll be using data from the `BA_degrees.rda` and `dow_jones_industrial.rda` datasets which are already in the `/data` subdirectory in our **data_vis_labs** project. Below is a description of the variables contained in each dataset.
+
+`BA_degrees.rda`
+
+* `field` - field of study
+* `year_str` - academic year (e.g. 1970-71)
+* `year` - closing year of academic year
+* `count` - number of degrees conferred within a field for the year
+* `perc` - field's percentage of degrees conferred for the year
+
+`dow_jones_industrial.rda`
+
+* `date` - date
+* `open` - Dow Jones Industrial Average at open
+* `high` - Day's high for the Dow Jones Industrial Average
+* `low` - Day's low for the Dow Jones Industrial Average
+* `close` - Dow Jones Industrial Average at close
+* `volume` - number of trades for the day
+
+We'll also be using a subset of the BRFSS (Behavioral Risk Factor Surveillance System) survey collected annually by the Centers for Disease Control and Prevention (CDC). The data can be found in the provided `cdc.txt` file --- place this file in your `/data` subdirectory. The dataset contains 20,000 complete observations/records of 9 variables/fields, described below.
+
+* `genhlth` - How would you rate your general health? (excellent, very good, good, fair, poor)
+* `exerany` - Have you exercised in the past month? (`1 = yes`, `0 = no`) 
+* `hlthplan` - Do you have some form of health coverage? (`1 = yes`, `0 = no`) 
+* `smoke100` - Have you smoked at least 100 cigarettes in your life time? (`1 = yes`, `0 = no`) 
+* `height` -  height in inches
+* `weight` - weight in pounds
+* `wtdesire` - weight desired in pounds
+* `age` - in years
+* `gender` - `m` for males and `f` for females
+
+<br>
+
+```{r load-packages, warning=FALSE, message=FALSE}
+# Load package(s)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+load("data/BA_degrees.rda")
+```
+
+## Exercises
+
+Complete the following exercises.
+
+<br>
+
+### Exercise 1
+
+Using `BA_degrees` dataset, recreate the following graphics as precisely as possible.
+
+```{r}
+# Wrangling for plotting
+ba_dat <- BA_degrees %>%
+  # mean % per field
+  group_by(field) %>%
+  mutate(mean_perc = mean(perc)) %>%
+  # Only fields with mean >= 5%
+  filter(mean_perc >= 0.05) %>%
+  # Organizing for plotting
+  arrange(desc(mean_perc), year) %>%
+  ungroup() %>%
+  mutate(field = fct_inorder(field))
+```
+
+<br>
+
+#### Plot 1
+**Answer:**
+```{r}
+# creating plot
+ba_dat %>%
+  ggplot(aes(x = year, y = perc)) +
+  geom_line() +
+  facet_wrap(~field) +
+  labs(
+    x = "Year",
+    y = "Proportion of degrees"
+  )
+```
+
+
+<br>
+
+#### Plot 2
+
+*Hints:*
+
+- Transparency is 0.5
+- Color used is`"red"`
+
+**Answer:**
+```{r}
+# creating plot
+ba_dat %>% 
+  ggplot(aes(x = year, y = perc)) +
+  geom_line(color = "red") +
+  geom_area(fill = "red", alpha = 0.5) +
+  facet_wrap(~field) +
+  xlab("Year") +
+  ylab("Proportion of degrees")
+```
+
+<br>
+
+#### Plot 3
+```{r}
+# creating plot
+ba_dat %>% 
+  ggplot(aes(x = year, y = perc)) +
+  geom_line(aes(color = field)) +
+  xlab("Year") +
+  ylab("Proportion of degrees")
+```
+
+
+<br>
+
+### Exercise 2
+
+Using `dow_jones_industrial` dataset, recreate the following graphics as precisely as possible. *Hint:* Used `close`.
+
+```{r}
+# load data
+load("data/dow_jones_industrial.rda")
+
+# Restrict data to useful range
+djia_date_range <- dow_jones_industrial %>%
+  filter(date >= ymd("2008/12/31") & date <= ymd("2010/01/10"))
+```
+
+<br>
+
+#### Plot 1
+
+*Hints:*
+
+- Colors used `"red"`, `"purple"`, & `"green"`
+
+**Answer: Calculate average from "close."**
+```{r message=FALSE, warning=FALSE}
+djia_date_range %>% 
+  ggplot(aes(date, close)) +
+  geom_line(color = "purple") +
+  geom_smooth(fill = "red", color = "green") +
+  labs(
+    x = "",
+    y = "Dow Jones Industrial Average"
+  )
+```
+
+
+<br>
+
+#### Plot 2
+
+*Hints:*
+
+- Wiggliness for `loess` is 0.3
+
+```{r message=FALSE, warning=FALSE}
+djia_date_range %>% 
+  ggplot(aes(date, close)) +
+  geom_line(color = "black", method = "loess") +
+  geom_smooth(color = "blue", se = FALSE, span = 0.3) +
+  labs(
+    x = "",
+    y = "Dow Jones Industrial Average"
+  )
+```
+
+
+<br>
+
+#### Plot 3
+
+*Hints:*
+
+- `y ~ ns(x, 6)` will need `splines` package (`"lm"` will work) 
+
+```{r message=FALSE, warning=FALSE}
+djia_date_range %>% 
+  ggplot(aes(date, close)) +
+  geom_line(color = "black", method = "loess") +
+  geom_smooth(method = lm, formula = y ~ splines::ns(x, 6), color = "blue", se = FALSE) +
+  labs(
+    x = "",
+    y = "Dow Jones Industrial Average"
+  )
+```
+
+
+<br>
+
+### Exercise 3
+
+Using `cdc` dataset, recreate the following graphics as precisely as possible.
+
+```{r cdc, message=FALSE, warning=FALSE}
+# Read in the cdc dataset
+cdc <- read_delim(file = "data/cdc.txt", delim = "|") %>%
+  mutate(genhlth = factor(genhlth,
+    levels = c("excellent", "very good", "good", "fair", "poor")
+  ))
+```
+
+<br>
+
+#### Plot 1
+
+Construct this plot in two ways. Once using `cdc` and once using the `genhlth_count`.
+
+```{r message=FALSE, warning=FALSE}
+# loading data
+# Read in the cdc dataset
+cdc <- read_delim(file = "data/cdc.txt", delim = "|") %>%
+  mutate(genhlth = factor(genhlth,
+    levels = c("excellent", "very good", "good", "fair", "poor")
+  ))
+
+genhlth_count <- cdc %>%
+  count(genhlth)
+```
+
+**Answer:**
+```{r}
+# plot
+cdc %>% 
+  ggplot(aes(x = genhlth)) +
+  geom_bar()
+```
+
+
+
+<br>
+
+##### Plot 2
+**Answer:**
+```{r}
+# plot
+cdc %>% 
+  ggplot(aes(x = genhlth)) +
+  geom_bar(aes(fill = as.factor(hlthplan)), position = "dodge") # filling with healthplan, plotting side by side
+```
+
+
+<br>
+
+##### Plot 3
+
+*Hints:*
+
+- Transparency is 0.2
+
+**Answer:**
+```{r}
+# plot
+cdc %>% 
+  ggplot(aes(x = weight)) +
+  geom_density(aes(color = genhlth, fill = genhlth), alpha = 0.2) +
+  facet_wrap(~gender)
+```
+
+
+<br>
+
+##### Plot 4
+
+*Hints:*
+
+- Transparency is 0.5
+- Horizontal axis should have lower limit of 50 and upper limit of 300
+
+**Answer:**
+```{r message=FALSE, warning=FALSE}
+# plot
+cdc %>% 
+  ggplot(aes(x = weight)) +
+  geom_density(aes(color = gender, fill = gender), alpha = 0.5) +
+  xlim(50,300) +
+  facet_wrap(~genhlth, nrow = 3)
+```
+
+
+<br>
+
+##### Plot 5
+
+*Hints:*
+
+- Transparency is 0.4
+
+**Answer:**
+```{r}
+# plot
+cdc %>% 
+  ggplot(aes(x = gender, y = height)) +
+  geom_boxplot(aes(fill = gender), alpha = 0.4) +
+  facet_grid(~genhlth)
+```
+<br>
+
+##### Plot 6
+
+*Hints:*
+
+- Transparency is 0.2
+
+**Answer:**
+```{r message=FALSE, warning=FALSE}
+# plot
+cdc %>% 
+  ggplot(aes(x = height, y = weight)) +
+  geom_point(aes(color = gender), alpha = 0.2) +
+  geom_smooth((aes(color = gender)), method = "lm")
+```
+
+
